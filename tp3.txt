@@ -1,0 +1,21 @@
+-- Creation of the table, it's not perfect since the split of the origin does include whitespace.
+CREATE TABLE names(
+    name STRING,
+    gender Array<String>,
+    origin Array<String>,
+    version DOUBLE
+)
+ROW FORMAT DELIMITED 
+FIELDS TERMINATED BY '\073'
+COLLECTION ITEMS TERMINATED BY ',';
+
+LOAD DATA INPATH '/user/pcordonnier/prenoms.csv' INTO TABLE names;
+
+--First M/R, does not work perfectly because of the empty origin on some names
+SELECT TRIM(orig), COUNT(name) FROM names LATERAL VIEW EXPLODE(origin) newtable AS orig GROUP BY TRIM(orig);
+
+--Second M/R, works as expected
+SELECT size(origin), count(name) FROM names GROUP BY size(origin);
+
+--Third M/R, it groups by array of origins instead of just m and f. It's needed to explode the array of gender but we didn't manage to do it.
+SELECT gender, 100 * (count(name) / counter.total_count) FROM names, (SELECT count(*) AS total_count FROM names) counter GROUP BY gender, total_count;
